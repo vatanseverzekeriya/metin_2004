@@ -3,6 +3,10 @@
 #include <cstdarg>
 #include <cstring>
 #include <iostream>
+#include <openssl/sha.h>
+#include <sstream>
+#include <iomanip>
+#include <vector>
 
 CDBManager::CDBManager()
     : m_pConnection(nullptr)
@@ -141,6 +145,22 @@ std::string CDBManager::EscapeString(const std::string& str)
     return result;
 }
 
+std::string CDBManager::HashPassword(const std::string& password)
+{
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, password.c_str(), password.length());
+    SHA256_Final(hash, &sha256);
+
+    std::stringstream ss;
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+    {
+        ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+    }
+    return ss.str();
+}
+
 bool CDBManager::SavePlayer(DWORD player_id, const TPlayerStats& stats, const TPosition& pos)
 {
     return Execute(
@@ -196,15 +216,15 @@ bool CDBManager::LoadPlayer(DWORD player_id, TPlayerStats& stats, TPosition& pos
     return true;
 }
 
-bool CDBManager::CreatePlayer(const std::string& name, BYTE job, DWORD& out_player_id)
+bool CDBManager::CreatePlayer(const std::string& name, BYTE job, DWORD account_id, DWORD& out_player_id)
 {
     std::string escaped_name = EscapeString(name);
 
     if (!Execute(
-        "INSERT INTO player (name, job, level, exp, gold, hp, max_hp, sp, max_sp, "
-        "attack, defense, magic_attack, magic_defense, pos_x, pos_y, pos_z) "
-        "VALUES ('%s', %u, 1, 0, 0, 1000, 1000, 100, 100, 50, 30, 20, 20, 957200, 244900, 0)",
-        escaped_name.c_str(), job
+        "INSERT INTO player (account_id, name, job, level, exp, gold, hp, max_hp, sp, max_sp, "
+        "attack, defense, magic_attack, magic_defense, pos_x, pos_y, pos_z, pvp_kills, pvp_deaths, create_time) "
+        "VALUES (%u, '%s', %u, 1, 0, 0, 1000, 1000, 100, 100, 50, 30, 20, 20, 957200, 244900, 0, 0, 0, NOW())",
+        account_id, escaped_name.c_str(), job
     ))
         return false;
 
@@ -212,14 +232,81 @@ bool CDBManager::CreatePlayer(const std::string& name, BYTE job, DWORD& out_play
     return true;
 }
 
+bool CDBManager::DeletePlayer(DWORD player_id)
+{
+    return Execute("DELETE FROM player WHERE id=%u", player_id);
+}
+
+bool CDBManager::GetPlayerName(DWORD player_id, std::string& name)
+{
+    MYSQL_RES* res = Query("SELECT name FROM player WHERE id=%u", player_id);
+    if (!res)
+        return false;
+
+    MYSQL_ROW row = mysql_fetch_row(res);
+    if (!row)
+    {
+        mysql_free_result(res);
+        return false;
+    }
+
+    name = row[0];
+    mysql_free_result(res);
+    return true;
+}
+
+bool CDBManager::CreateAccount(const std::string& login, const std::string& password, const std::string& email)
+{
+    std::string escaped_login = EscapeString(login);
+    std::string escaped_email = EscapeString(email);
+    std::string password_hash = HashPassword(password);
+
+    // Önce hesap var mı kontrol et
+    if (IsAccountExist(login))
+    {
+        std::cerr << "Account already exists: " << login << std::endl;
+        return false;
+    }
+
+    return Execute(
+        "INSERT INTO account (login, password, email, create_time, last_login) "
+        "VALUES ('%s', '%s', '%s', NOW(), NOW())",
+        escaped_login.c_str(), password_hash.c_str(), escaped_email.c_str()
+    );
+}
+
 bool CDBManager::CheckAccount(const std::string& login, const std::string& password)
 {
     std::string escaped_login = EscapeString(login);
-    std::string escaped_password = EscapeString(password);
+    std::string password_hash = HashPassword(password);
 
     MYSQL_RES* res = Query(
-        "SELECT id FROM account WHERE login='%s' AND password=PASSWORD('%s')",
-        escaped_login.c_str(), escaped_password.c_str()
+        "SELECT id FROM account WHERE login='%s' AND password='%s'",
+        escaped_login.c_str(), password_hash.c_str()
+    );
+
+    if (!res)
+        return false;
+
+    bool exists = mysql_num_rows(res) > 0;
+    mysql_free_result(res);
+
+    // Başarılı giriş için son giriş zamanını güncelle
+    if (exists)
+    {
+        Execute("UPDATE account SET last_login=NOW() WHERE login='%s'", escaped_login.c_str());
+    }
+
+    return exists;
+}
+
+bool CDBManager::IsAccountExist(const std::string& login)
+{
+    std::string escaped_login = EscapeString(login);
+
+    MYSQL_RES* res = Query(
+        "SELECT id FROM account WHERE login='%s'",
+        escaped_login.c_str()
     );
 
     if (!res)
@@ -246,6 +333,29 @@ DWORD CDBManager::GetAccountID(const std::string& login)
     DWORD account_id = row ? atoi(row[0]) : 0;
     mysql_free_result(res);
     return account_id;
+}
+
+bool CDBManager::GetPlayersByAccount(DWORD account_id, std::vector<std::pair<DWORD, std::string>>& players)
+{
+    MYSQL_RES* res = Query(
+        "SELECT id, name FROM player WHERE account_id=%u ORDER BY create_time",
+        account_id
+    );
+
+    if (!res)
+        return false;
+
+    players.clear();
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(res)))
+    {
+        DWORD player_id = atoi(row[0]);
+        std::string player_name = row[1];
+        players.push_back(std::make_pair(player_id, player_name));
+    }
+
+    mysql_free_result(res);
+    return true;
 }
 
 bool CDBManager::UpdatePvPStats(DWORD player_id, DWORD kills, DWORD deaths)

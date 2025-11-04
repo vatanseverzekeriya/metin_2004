@@ -28,11 +28,16 @@ public:
     // Oyuncu veritabanı işlemleri
     bool SavePlayer(DWORD player_id, const TPlayerStats& stats, const TPosition& pos);
     bool LoadPlayer(DWORD player_id, TPlayerStats& stats, TPosition& pos);
-    bool CreatePlayer(const std::string& name, BYTE job, DWORD& out_player_id);
+    bool CreatePlayer(const std::string& name, BYTE job, DWORD account_id, DWORD& out_player_id);
+    bool DeletePlayer(DWORD player_id);
+    bool GetPlayerName(DWORD player_id, std::string& name);
 
     // Hesap işlemleri
+    bool CreateAccount(const std::string& login, const std::string& password, const std::string& email);
     bool CheckAccount(const std::string& login, const std::string& password);
     DWORD GetAccountID(const std::string& login);
+    bool IsAccountExist(const std::string& login);
+    bool GetPlayersByAccount(DWORD account_id, std::vector<std::pair<DWORD, std::string>>& players);
 
     // PvP istatistikleri
     bool UpdatePvPStats(DWORD player_id, DWORD kills, DWORD deaths);
@@ -40,6 +45,9 @@ public:
 
     // Escape string
     std::string EscapeString(const std::string& str);
+
+    // Password hashing (SHA256)
+    std::string HashPassword(const std::string& password);
 
 private:
     CDBManager();
