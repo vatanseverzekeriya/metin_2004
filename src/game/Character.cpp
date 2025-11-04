@@ -1,4 +1,5 @@
 #include "../../include/game/Character.h"
+#include "../../include/game/PVPManager.h"
 #include "../../include/db/DBManager.h"
 #include <cmath>
 #include <iostream>
@@ -175,6 +176,11 @@ bool CCharacter::CanAttack(CCharacter* victim)
     if (m_ePvPMode == PVP_MODE_NONE)
         return false;
 
+    // PVPManager kontrolü (cCorax2 CanAttack() entegrasyonu)
+    // Bu kontrol PvP request/accept sistemi ve revenge mode'u içerir
+    if (!CPVPManager::Instance().CanAttack(this, victim))
+        return false;
+
     return true;
 }
 
@@ -262,6 +268,10 @@ void CCharacter::OnDeath(CCharacter* killer)
     if (killer)
         std::cout << " by " << killer->GetName();
     std::cout << "!" << std::endl;
+
+    // PVPManager'a ölüm bildirimi (revenge mode için)
+    if (killer)
+        CPVPManager::Instance().OnDeath(this, killer);
 }
 
 void CCharacter::IncreasePvPKills()
@@ -313,4 +323,74 @@ void CCharacter::Update()
 {
     // Düzenli güncelleme işlemleri
     // Örnek: HP/SP rejenerasyonu, buff kontrolü vs.
+}
+
+// ============================================================================
+// PvP Request Sistemi (PVPManager entegrasyonu)
+// ============================================================================
+
+/**
+ * Hedefe PvP request gönder
+ */
+void CCharacter::SendPvPRequest(CCharacter* target)
+{
+    if (!target || target == this)
+    {
+        std::cout << "[PVP] Invalid target for PvP request" << std::endl;
+        return;
+    }
+
+    if (IsDead() || target->IsDead())
+    {
+        std::cout << "[PVP] Cannot send PvP request - dead character" << std::endl;
+        return;
+    }
+
+    std::cout << "[PVP] " << m_strName << " sends PvP request to "
+              << target->GetName() << std::endl;
+
+    // PVPManager'a ilet
+    CPVPManager::Instance().Insert(m_dwPlayerID, target->GetPlayerID());
+
+    // TODO: Mobile notification - target'e PvP request UI göster
+}
+
+/**
+ * PvP request'i kabul et
+ */
+void CCharacter::AcceptPvPRequest(CCharacter* requester)
+{
+    if (!requester)
+    {
+        std::cout << "[PVP] Invalid requester" << std::endl;
+        return;
+    }
+
+    std::cout << "[PVP] " << m_strName << " accepts PvP request from "
+              << requester->GetName() << std::endl;
+
+    // PVPManager'a kabul et
+    CPVPManager::Instance().Agree(m_dwPlayerID);
+
+    // TODO: Mobile notification - PvP fight başladı
+}
+
+/**
+ * PvP request'i reddet
+ */
+void CCharacter::DeclinePvPRequest(CCharacter* requester)
+{
+    if (!requester)
+    {
+        std::cout << "[PVP] Invalid requester" << std::endl;
+        return;
+    }
+
+    std::cout << "[PVP] " << m_strName << " declines PvP request from "
+              << requester->GetName() << std::endl;
+
+    // PVPManager'dan kaldır
+    CPVPManager::Instance().Remove(m_dwPlayerID, requester->GetPlayerID());
+
+    // TODO: Mobile notification - Request reddedildi
 }

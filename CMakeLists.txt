@@ -76,6 +76,7 @@ set(GAME_SOURCES
     src/game/Character.cpp
     src/game/GameServer.cpp
     src/game/QuestManager.cpp
+    src/game/PVPManager.cpp
     src/game/main.cpp
 )
 

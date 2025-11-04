@@ -75,6 +75,11 @@ public:
     void IncreasePvPKills();
     void IncreasePvPDeaths();
 
+    // PvP Request sistemi (PVPManager entegrasyonu)
+    void SendPvPRequest(CCharacter* target);
+    void AcceptPvPRequest(CCharacter* requester);
+    void DeclinePvPRequest(CCharacter* requester);
+
     // Saldırı sistemi
     bool Attack(CCharacter* victim);
     void OnDamage(CCharacter* attacker, DWORD damage);

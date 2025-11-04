@@ -25,6 +25,7 @@ DB_SOURCES = $(SRC_DIR)/db/DBManager.cpp
 GAME_SOURCES = $(SRC_DIR)/game/Character.cpp \
                $(SRC_DIR)/game/GameServer.cpp \
                $(SRC_DIR)/game/QuestManager.cpp \
+               $(SRC_DIR)/game/PVPManager.cpp \
                $(SRC_DIR)/game/main.cpp
 
 ALL_SOURCES = $(DB_SOURCES) $(GAME_SOURCES)
