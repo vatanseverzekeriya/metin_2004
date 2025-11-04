@@ -1,0 +1,46 @@
+# Build directories
+build/
+bin/
+*.o
+*.a
+*.so
+
+# Executables
+game_server
+db_server
+*.exe
+*.out
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile.cmake
+*.cmake
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+log/
+*.log
+
+# Database
+*.sql.backup
+
+# Config (sensitive)
+config/database.conf
+config/private/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*.bak
+*.old
