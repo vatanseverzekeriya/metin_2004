@@ -16,6 +16,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include/common
     ${PROJECT_SOURCE_DIR}/include/db
     ${PROJECT_SOURCE_DIR}/include/game
+    ${PROJECT_SOURCE_DIR}/include/network
 )
 
 # MySQL kütüphanesini bul
@@ -58,6 +59,12 @@ set(DB_SOURCES
     src/db/DBManager.cpp
 )
 
+set(NETWORK_SOURCES
+    src/network/WebSocketServer.cpp
+    src/network/UDPServer.cpp
+    src/network/NetworkManager.cpp
+)
+
 set(GAME_SOURCES
     src/game/Character.cpp
     src/game/GameServer.cpp
@@ -69,6 +76,7 @@ set(GAME_SOURCES
 add_executable(game_server
     ${COMMON_SOURCES}
     ${DB_SOURCES}
+    ${NETWORK_SOURCES}
     ${GAME_SOURCES}
 )
 
