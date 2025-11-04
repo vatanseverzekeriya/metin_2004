@@ -2,10 +2,15 @@
 #define __INC_GAME_CHARACTER_H__
 
 #include "../common/types.h"
+#include "Movement.h"
 #include <string>
 #include <memory>
 #include <set>
 #include <chrono>
+
+// Forward declarations
+class CAffectManager;
+class CMovement;
 
 class CCharacter
 {
@@ -44,7 +49,11 @@ public:
     void DecreaseHP(DWORD amount);
 
     DWORD GetMaxHP() const { return m_stats.max_hp; }
+
     DWORD GetSP() const { return m_stats.sp; }
+    void SetSP(DWORD sp);
+    void IncreaseSP(DWORD amount);
+    void DecreaseSP(DWORD amount);
     DWORD GetMaxSP() const { return m_stats.max_sp; }
 
     DWORD GetExp() const { return m_stats.exp; }
@@ -88,10 +97,18 @@ public:
     bool Load();
 
     // Güncelleme
-    void Update();
+    void Update(float delta_time);
 
     // Mesafe hesaplama
     DWORD GetDistance(const CCharacter* ch) const;
+
+    // Affect Manager
+    CAffectManager* GetAffectManager() const { return m_pkAffectManager; }
+
+    // Movement
+    CMovement* GetMovement() const { return m_pkMovement; }
+    bool StartMove(const TPosition& target, EMovementType type = MOVE_TYPE_RUN);
+    void StopMove();
 
 private:
     DWORD m_dwPlayerID;
@@ -113,6 +130,10 @@ private:
 
     // Hedef tracking
     CCharacter* m_pkVictim;
+
+    // Affect ve Movement yöneticileri
+    CAffectManager* m_pkAffectManager;
+    CMovement* m_pkMovement;
 
     void CalculateMaxHP();
     void CalculateMaxSP();

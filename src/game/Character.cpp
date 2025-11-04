@@ -1,4 +1,6 @@
 #include "../../include/game/Character.h"
+#include "../../include/game/AffectManager.h"
+#include "../../include/game/Movement.h"
 #include "../../include/db/DBManager.h"
 #include <cmath>
 #include <iostream>
@@ -12,13 +14,29 @@ CCharacter::CCharacter()
     , m_dwPvPDeaths(0)
     , m_dwAttackSpeed(1000) // 1 saniye
     , m_pkVictim(nullptr)
+    , m_pkAffectManager(nullptr)
+    , m_pkMovement(nullptr)
 {
     m_lastAttackTime = std::chrono::steady_clock::now();
+    m_pkAffectManager = new CAffectManager(this);
+    m_pkMovement = new CMovement();
 }
 
 CCharacter::~CCharacter()
 {
     Destroy();
+
+    if (m_pkAffectManager)
+    {
+        delete m_pkAffectManager;
+        m_pkAffectManager = nullptr;
+    }
+
+    if (m_pkMovement)
+    {
+        delete m_pkMovement;
+        m_pkMovement = nullptr;
+    }
 }
 
 bool CCharacter::Initialize(DWORD player_id)
@@ -92,6 +110,28 @@ void CCharacter::DecreaseHP(DWORD amount)
         SetHP(0);
     else
         SetHP(m_stats.hp - amount);
+}
+
+void CCharacter::SetSP(DWORD sp)
+{
+    if (sp > m_stats.max_sp)
+        sp = m_stats.max_sp;
+
+    m_stats.sp = sp;
+}
+
+void CCharacter::IncreaseSP(DWORD amount)
+{
+    DWORD new_sp = m_stats.sp + amount;
+    SetSP(new_sp);
+}
+
+void CCharacter::DecreaseSP(DWORD amount)
+{
+    if (amount >= m_stats.sp)
+        SetSP(0);
+    else
+        SetSP(m_stats.sp - amount);
 }
 
 void CCharacter::GiveExp(DWORD exp)
@@ -309,8 +349,52 @@ bool CCharacter::Load()
     return true;
 }
 
-void CCharacter::Update()
+void CCharacter::Update(float delta_time)
 {
-    // Düzenli güncelleme işlemleri
-    // Örnek: HP/SP rejenerasyonu, buff kontrolü vs.
+    if (!m_pkAffectManager || !m_pkMovement)
+        return;
+
+    // Affect sistemini güncelle
+    m_pkAffectManager->Update(delta_time);
+
+    // Hareket sistemini güncelle
+    if (m_pkMovement->IsMoving())
+    {
+        if (m_pkMovement->UpdateMove(delta_time))
+        {
+            // Hareket devam ediyor, pozisyonu güncelle
+            m_position = m_pkMovement->GetCurrentPosition();
+        }
+        else
+        {
+            // Hareket tamamlandı
+            if (m_pkMovement->HasArrived())
+            {
+                m_position = m_pkMovement->GetCurrentPosition();
+                SetState(STATE_IDLE);
+            }
+        }
+    }
+}
+
+bool CCharacter::StartMove(const TPosition& target, EMovementType type)
+{
+    if (!m_pkMovement || IsDead())
+        return false;
+
+    // Stun durumunda hareket edilemez
+    if (m_pkAffectManager && m_pkAffectManager->IsStunned())
+        return false;
+
+    SetState(STATE_MOVING);
+    return m_pkMovement->StartMove(m_position, target, type);
+}
+
+void CCharacter::StopMove()
+{
+    if (m_pkMovement)
+    {
+        m_pkMovement->StopMove();
+        SetState(STATE_IDLE);
+    }
 }
