@@ -65,6 +65,13 @@ set(NETWORK_SOURCES
     src/network/NetworkManager.cpp
 )
 
+set(MOBILE_SOURCES
+    src/mobile/TouchInput.cpp
+    src/mobile/VirtualJoystick.cpp
+    src/mobile/UIButton.cpp
+    src/mobile/GameControls.cpp
+)
+
 set(GAME_SOURCES
     src/game/Character.cpp
     src/game/GameServer.cpp
@@ -77,6 +84,7 @@ add_executable(game_server
     ${COMMON_SOURCES}
     ${DB_SOURCES}
     ${NETWORK_SOURCES}
+    ${MOBILE_SOURCES}
     ${GAME_SOURCES}
 )
 
