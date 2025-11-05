@@ -275,7 +275,7 @@ void CGameControls::SetQuickSlot(int index, DWORD skill_id, DWORD icon_id)
 
         if (auto btn = GetSkillButton(index))
         {
-            btn->SetIconID(icon_id);
+            btn->SetIcon(icon_id);
         }
     }
 }
